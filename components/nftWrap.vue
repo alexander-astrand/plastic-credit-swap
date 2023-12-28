@@ -121,12 +121,15 @@ export default {
 
       const denom = selectedCollection.creditCollection.denom;
       const amountToWrap = selectedCollection.selectedAmount;
+      const address = this.walletAddress;
 
       try {
-        await this.$axios.post("/api/fetch-plastic-credit", { 
+        const result = await this.$axios.post("/api/fetch-and-mint-plastic-credit", { 
           denom, 
-          amountToWrap 
+          amountToWrap,
+          address,
         });
+        console.log(result);
         // Handle the response as needed
       } catch (error) {
         console.error("Error sending data to the server", error);
