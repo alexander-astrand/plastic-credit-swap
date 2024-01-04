@@ -1,21 +1,33 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { DirectSecp256k1Wallet, SigningCosmWasmClient } = require('@cosmjs/cosmwasm-stargate');
+const { SigningCosmWasmClient } = require('@cosmjs/cosmwasm-stargate');
+const DirectSecp256k1Wallet = require('@cosmjs/proto-signing').DirectSecp256k1Wallet;
 const crypto = require('crypto');
 const app = express();
 const pinataSDK = require('@pinata/sdk');
 const pinata = new pinataSDK({ pinataJWTKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJhMzIzMzhjNS1hNzBiLTRhZmMtYTNkYS0yODU1Y2U2NjQxNWQiLCJlbWFpbCI6InBpbmF0YUBhc3RyYW5kLnh5eiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaW5fcG9saWN5Ijp7InJlZ2lvbnMiOlt7ImlkIjoiRlJBMSIsImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxfSx7ImlkIjoiTllDMSIsImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxfV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6IkFDVElWRSJ9LCJhdXRoZW50aWNhdGlvblR5cGUiOiJzY29wZWRLZXkiLCJzY29wZWRLZXlLZXkiOiI0NzUwMGU3NDUxMjg5YThmYmE3ZiIsInNjb3BlZEtleVNlY3JldCI6Ijk3MTQ3NGMzMGQ4ZjI4YWQwNDg0ODc4NzMwYWI3NDUxNWEzNmNkZDkyYWVmY2VlMTk1ODk4ZWQwMDljNjUzMjkiLCJpYXQiOjE3MDM3MjI5MTV9.xFfwT3wysY99clpdMNi1epfosLGip5XpP3Nlm8XzQro'});
+const { GasPrice } = require('@cosmjs/stargate');
+
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
 
+  const privateKeyHex = '70d41ed8ed63f3377b99ae3c2e4b4bd93266237c90fae963943d4c1499fdf9f3'; // Replace with your actual private key in hex format
+  //const privateKey = Buffer.from(privateKeyHex, 'hex');
 
-const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', {
-    namedCurve: 'secp256k1'
-});
+  const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
 
-const privateKeyPem = privateKey.export({ type: 'sec1', format: 'pem' });
+  
+  async function mintNFT(contractAddress, mintMsg, rpcEndpoint) {
+      const wallet = await DirectSecp256k1Wallet.fromKey(privateKey, 'empower');
+      const [firstAccount] = await wallet.getAccounts();
+      console.log("firstAccount: ", firstAccount);
+      const gasPrice = GasPrice.fromString("0.025umpwr");
+      const client = await SigningCosmWasmClient.connectWithSigner(rpcEndpoint, wallet, { gasPrice });
+  
+      return await client.execute(firstAccount.address, contractAddress, mintMsg, "auto");
+  }
 
 function extractIpfsHashFromResponse(plasticCreditResponse) {
     if (plasticCreditResponse.creditCollection.metadataUris && plasticCreditResponse.creditCollection.metadataUris.length > 0) {
@@ -23,28 +35,6 @@ function extractIpfsHashFromResponse(plasticCreditResponse) {
         return ipfsUri.replace('ipfs://', '');
     }
     return null; // Return null if no IPFS hash is found
-}
-
-// function signData(data, privateKeyPem) {
-//     const sign = crypto.createSign('SHA256');
-//     sign.update(data);
-//     sign.end();
-//     return sign.sign(privateKeyPem, 'base64'); // Returning signature in base64
-// }
-
-async function mintNFT(contractAddress, mintMsg, privateKeyPem, rpcEndpoint) {
-    const wallet = await DirectSecp256k1Wallet.fromPem(privateKeyPem);
-    const [firstAccount] = await wallet.getAccounts();
-    const client = await SigningCosmWasmClient.connectWithSigner(rpcEndpoint, wallet);
-
-    return await client.execute(firstAccount.address, contractAddress, mintMsg, "auto");
-}
-
-
-async function uploadToIpfs(metadata) {
-    const ipfs = ipfsClient.create({ host: 'ipfs.infura.io', port: 5001, protocol: 'https' });
-    const { path } = await ipfs.add(JSON.stringify(metadata));
-    return `ipfs://${path}`;
 }
 
 app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
@@ -84,26 +74,25 @@ app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
               console.log("Pinata link: ", pinataResponse);
               const ipfsLink = `https://ipfs.io/ipfs/${pinataResponse.IpfsHash}`;
               
-            // const payloadString = JSON.stringify(metadata);
-            // const signature = signData(payloadString, privateKeyPem);
 
+            token_id = crypto.randomBytes(16).toString('hex');
+            console.log("token_id: ", token_id);
             const mintMsg = {
                 mint: {
                     owner: address,
                     token_uri: ipfsLink,
-                    // signature: signature
+                    token_id: token_id
                 }
             };
-            res.send({ mintMsg, metadata, ipfsData });
-            // console.log('Minting NFT with message:', mintMsg);
-            // try {
-            //     console.log(privateKeyPem);
-            //     const mintResult = await mintNFT("YOUR_CONTRACT_ADDRESS", mintMsg, privateKeyPem, "https://testnet.empowerchain.io:26659");
-            //     res.json({ mintTransactionResult: mintResult });
-            // } catch (mintError) {
-            //     console.error('Error minting NFT:', mintError);
-            //     res.status(500).send('Error minting NFT');
-            // }
+            //res.send({ mintMsg, metadata, ipfsData });
+            console.log('Minting NFT with message:', mintMsg);
+            try {
+                const mintResult = await mintNFT("empower14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sfg4umu", mintMsg, "http://localhost:26657");
+                res.json({ mintTransactionResult: mintResult });
+            } catch (mintError) {
+                console.error('Error minting NFT:', mintError);
+                res.status(500).send('Error minting NFT');
+            }
         } else {
             res.status(404).send('IPFS hash not found');
         }

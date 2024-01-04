@@ -41,17 +41,46 @@ export default {
   modules: [
     // https://go.nuxtjs.dev/axios
     '@nuxtjs/axios',
+    '@nuxtjs/proxy'
   ],
-
+  proxy: {
+    '/api/': { 
+      target: 'http://localhost:26657', // Your blockchain RPC server
+      pathRewrite: { '^/api/': '' },
+      changeOrigin: true
+    }
+  },
   // Axios module configuration: https://go.nuxtjs.dev/config-axios
   axios: {
     // Workaround to avoid enforcing hard-coded localhost:3000: https://github.com/nuxt-community/axios-module/issues/308
+    proxy: true,
     baseURL: '/',
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {
     transpile: ['graphql-request', '@empower-plastic/empowerjs'],
+    extend(config, { isDev, isClient }) {
+      // ..
+      config.module.rules.push({
+        test: /\.js$|jsx/,
+        exclude: /node_modules\/libsodium/,
+        use: {
+          loader: "babel-loader",
+          options: {
+            presets: ["@babel/preset-env"],
+            plugins: ['@babel/plugin-proposal-optional-chaining']
+          },
+        },
+      })
+      // Sets webpack's mode to development if `isDev` is true.
+      if (isDev) {
+        config.mode = 'development'
+      }
+      if (isClient) {
+        config.optimization.splitChunks.maxSize = 200000
+      }
+    },
   },
   
   plugins: [
@@ -60,4 +89,5 @@ export default {
   serverMiddleware: [
     { path: '/api', handler: '~/serverMiddleware/api.js' },
   ],
+  
 }
