@@ -1,7 +1,7 @@
 <template>
   <div class="wrapPage">
 
-    <button @click="this.transferPlasticCredits"> HALLOOOOOOO</button>
+    <button @click="this.grantAuthorization"> HALLOOOOOOO</button>
     <h1 class="mainTitle">Plastic Credit NFT Wrapper</h1>
     <div class="wrapBox">
       <div v-if="loading" class="loading">
@@ -75,6 +75,7 @@
       <div v-if="currentTab === 'unwrapper'">
         <!-- Unwrap content here -->
         <h2>Unwrap Your NFT</h2>
+        <button @click="unwrapNFT">Burn</button>
         <!-- Unwrap functionality -->
       </div>
     </div>
@@ -97,8 +98,9 @@ getSigningTM37EmpowerchainClient,
 } from "@empower-plastic/empowerjs";
 // import { getWallet, resolveSdkError } from "../../marketplace/src/utils/wallet-utils";
 
-
+const DirectSecp256k1Wallet = require('@cosmjs/proto-signing').DirectSecp256k1Wallet;
 import {  SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+const { GasPrice } = require('@cosmjs/stargate');
 
 const { transferCredits } =
   empowerchain.plasticcredit.MessageComposer.withTypeUrl;
@@ -121,7 +123,7 @@ export default {
       size: '15px', // Size of the spinner
       denom: ref(""),
       amountToWrap: ref(""),
-      offlineSigner: window.getOfflineSigner("circulus-1"),
+      offlineSigner: window.getOfflineSigner("emp-devnet-1"),
     };
   },
 
@@ -152,6 +154,8 @@ export default {
       },
       { immediate: true }
     );
+    this.addChainToKeplr();
+    this.queryNFTs();
   },
 
   methods: {
@@ -206,8 +210,8 @@ export default {
         maxCredits: "1",
     })
     const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
-        granter: this.walletAddress,
-        grantee: "empower14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sfg4umu",
+        granter: "empower1qrfe6cx3j59wuc2g4xu3dw3sc8tl6lnfpaswzw",
+        grantee: "empower1hywmhhy3jl7j7lpcghfjpsynmy9vrr0ne2009s",
         grant: {
             authorization: {
                 typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
@@ -223,8 +227,62 @@ export default {
               gas: "200000",
           }
       );
-
   },
+
+  async addChainToKeplr() {
+    if (!window.getOfflineSigner || !window.keplr) {
+        alert("Please install keplr extension");
+    } else {
+        try {
+          await window.keplr.experimentalSuggestChain({
+            chainId: "emp-devnet-1",
+        chainName: "EmpowerChain Local Server",
+        rpc: "tpc://0.0.0.0:26657",
+        rest: "http://0.0.0.0:1317",
+        bip44: {
+            coinType: 118,
+        },
+        bech32Config: {
+            bech32PrefixAccAddr: "empower",
+            bech32PrefixAccPub: "empower" + "pub",
+            bech32PrefixValAddr: "empower" + "valoper",
+            bech32PrefixValPub: "empower" + "valoperpub",
+            bech32PrefixConsAddr: "empower" + "valcons",
+            bech32PrefixConsPub: "empower" + "valconspub",
+        },
+        currencies: [
+            {
+                coinDenom: "MPWR",
+                coinMinimalDenom: "umpwr",
+                coinDecimals: 6,
+                coinGeckoId: "mpwr",
+            },
+        ],
+        feeCurrencies: [
+            {
+                coinDenom: "MPWR",
+                coinMinimalDenom: "umpwr",
+                coinDecimals: 6,
+                gasPriceStep: {
+                    low: 0.01,
+                    average: 0.025,
+                    high: 0.04,
+                },
+            },
+        ],
+        stakeCurrency: {
+            coinDenom: "MPWR",
+            coinMinimalDenom: "umpwr",
+            coinDecimals: 6,
+        },
+});
+
+            alert("Chain added to Keplr");
+        } catch (error) {
+            console.error("Error adding chain: ", error);
+        }
+    }
+},
 
 
     async fetchGraphQLData() {
@@ -272,7 +330,7 @@ export default {
 
     async wrapNFT() {
 
-      await this.grantAuthorization()
+      //await this.grantAuthorization()
 
       this.loading = true;
       if (this.selectedId === null) {
@@ -289,9 +347,6 @@ export default {
       let denom = selectedCollection.creditCollection.denom;
       let amountToWrap = this.selectedActiveAmount; // Ensure this is bound correctly
       const address = this.walletAddress;
-
-
-
 
       try {
         const result = await this.$axios.post(
@@ -314,6 +369,41 @@ export default {
         this.error = "Failed to send data to the server.";
       }
       this.fetchGraphQLData();
+      this.loading = false;
+    },
+
+    async unwrapNFT() {
+      this.loading = true;
+      try {
+        const result = await this.$axios.post(
+          "/api/unwrap-nft",
+        );
+        console.log(result);
+        Swal.fire({
+          title: "Congratulations!",
+          text: "You unwrapped your NFT",
+          icon: "success"
+        });
+        // Handle the response as needed
+      } catch (error) {
+        console.error("Error sending data to the server", error);
+        this.error = "Failed to send data to the server.";
+      }
+      this.loading = false;
+    },
+
+    async queryNFTs() {
+      this.loading = true;
+      try {
+        const result = await this.$axios.post(
+          "/api/query-nfts",
+        );
+        console.log(result);
+        // Handle the response as needed
+      } catch (error) {
+        console.error("Error sending data to the server", error);
+        this.error = "Failed to send data to the server.";
+      }
       this.loading = false;
     },
   },
