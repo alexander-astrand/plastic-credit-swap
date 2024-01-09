@@ -1,112 +1,110 @@
 <template>
   <div class="wrapPage">
-
-    <button @click="this.grantAuthorization"> HALLOOOOOOO</button>
+    <button @click="this.grantAuthorization">HALLOOOOOOO</button>
     <h1 class="mainTitle">Plastic Credit NFT Wrapper</h1>
     <div class="wrapBox">
       <div v-if="loading" class="loading">
-        <rotate-loader :loading="loading" :color="color" :size="size"></rotate-loader>
+        <rotate-loader
+          :loading="loading"
+          :color="color"
+          :size="size"
+        ></rotate-loader>
       </div>
-    <div v-if="!loading">
-      <div class="tabs">
-        <button :class="{ selectedTab: currentTab === 'wrapper' }" @click="currentTab = 'wrapper'">Wrapper</button>
-        <button :class="{ selectedTab: currentTab === 'unwrapper' }" @click="currentTab = 'unwrapper'">Unwrapper</button>
-      </div>
-      <div v-if="walletAddress == null">
-        <h2>Sign in with wallet</h2>
-      </div>
-      <div v-if="walletAddress !== null">
-      <div v-if="currentTab === 'wrapper'">
-        <p class="collectionText">Choose which credit collection to wrap from: </p>
-        <!-- <ul>
-        <li
-          v-for="(item, index) in creditBalances"
-          :key="index"
-          v-if="item.amountActive !== '0'"
-        >
-          <input
-            type="radio"
-            :id="'radio-' + index"
-            name="creditBalanceSelection"
-            :value="index"
-            v-model="selectedId"
-          />
-          <input
-            type="number"
-            :id="'amount-' + index"
-            :name="'amount-' + index"
-            v-model="item.selectedAmount"
-            min="1"
-            :max="item.amountActive"
-          />
-          <label :for="'radio-' + index">
-            Active Amount: {{ item.amountActive }} <br />
-            ID: {{ item.creditCollection.denom }}
-          </label>
-        </li>
-      </ul> -->
-      <div class="dropdownBox">
-        <select class="dropDown" v-model="selectedId">
-          <option disabled value="">Please select one</option>
-          <option
-            v-for="(item, index) in creditBalances"
-            :key="index"
-            :value="index"
-            v-if="item.amountActive !== '0'"
+      <div v-if="!loading">
+        <div class="tabs">
+          <button
+            :class="{ selectedTab: currentTab === 'wrapper' }"
+            @click="currentTab = 'wrapper'"
           >
-            {{ item.creditCollection.denom }}
-          </option>
-        </select>
-      </div>
-        <div class="amountBox" v-if="selectedId !== null">
-          <p>Amount avaliable to wrap: {{ selectedActiveAmount }}</p>
-          <p>Select amount to wrap: </p>
-          <input
-            type="number"
-            v-model="selectedAmount"
-            min="1"
-            :max="selectedMaxAmount"
-          />
-          <button @click="wrapNFT">Wrap NFT</button>
+            Wrapper
+          </button>
+          <button
+            :class="{ selectedTab: currentTab === 'unwrapper' }"
+            @click="currentTab = 'unwrapper'"
+          >
+            Unwrapper
+          </button>
         </div>
-        <div class="error" v-if="error">Error: {{ error }}</div>
-      </div>
+        <div v-if="walletAddress == null">
+          <h2>Sign in with wallet</h2>
+        </div>
+        <div v-if="walletAddress !== null">
+          <div v-if="currentTab === 'wrapper'">
+            <p class="collectionText">
+              Choose which credit collection to wrap from:
+            </p>
+            <div class="dropdownBox">
+              <select class="dropDown" v-model="selectedId">
+                <option disabled value="">Please select one</option>
+                <option
+                  v-for="(item, index) in creditBalances"
+                  :key="index"
+                  :value="index"
+                  v-if="item.amountActive !== '0'"
+                >
+                  {{ item.creditCollection.denom }}
+                </option>
+              </select>
+            </div>
+            <div class="amountBox" v-if="selectedId !== null">
+              <p>Amount avaliable to wrap: {{ selectedActiveAmount }}</p>
+              <p>Select amount to wrap:</p>
+              <input
+                type="number"
+                v-model="selectedAmount"
+                min="1"
+                :max="selectedMaxAmount"
+              />
+              <button @click="wrapNFT">Wrap NFT</button>
+            </div>
+            <div class="error" v-if="error">Error: {{ error }}</div>
+          </div>
 
-      <div v-if="currentTab === 'unwrapper'">
-        <!-- Unwrap content here -->
-        <h2>Unwrap Your NFT</h2>
-        <button @click="unwrapNFT">Burn</button>
-        <!-- Unwrap functionality -->
+          <div v-if="currentTab === 'unwrapper'">
+            <h2>Choose which NFT to unwrap (TokenID):</h2>
+
+            <!-- Dropdown for selecting NFT -->
+            <div class="dropdownBox">
+              <select class="dropDown" v-model="selectedNFTId">
+                <option disabled value="">Please select an NFT</option>
+                <option v-for="nftId in nfts" :key="nftId" :value="nftId">
+                  {{ nftId }}
+                </option>
+              </select>
+            </div>
+            <!-- Unwrap Button -->
+            <button v-if="selectedNFTId !== null" @click="unwrapNFT">
+              Unwrap
+            </button>
+
+            <!-- Display error message if any -->
+            <div class="error" v-if="error">Error: {{ error }}</div>
+          </div>
+        </div>
       </div>
-    </div>
-    </div>
     </div>
   </div>
- 
 </template>
 
 <script>
 import { request, gql } from "graphql-request";
 import { watch } from "vue";
-import RotateLoader from 'vue-spinner/src/RotateLoader.vue'
-import Swal from 'sweetalert2'
+import RotateLoader from "vue-spinner/src/RotateLoader.vue";
+import Swal from "sweetalert2";
 import { ref } from "vue";
 import {
-cosmos,
-empowerchain,
-getSigningTM37EmpowerchainClient,
+  cosmos,
+  empowerchain,
+  getSigningTM37EmpowerchainClient,
 } from "@empower-plastic/empowerjs";
-// import { getWallet, resolveSdkError } from "../../marketplace/src/utils/wallet-utils";
-
-const DirectSecp256k1Wallet = require('@cosmjs/proto-signing').DirectSecp256k1Wallet;
-import {  SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-const { GasPrice } = require('@cosmjs/stargate');
+const { SigningCosmWasmClient } = require("@cosmjs/cosmwasm-stargate");
+const { Tendermint37Client } = require("@cosmjs/tendermint-rpc");
+const { GasPrice } = require("@cosmjs/stargate");
 
 const { transferCredits } =
   empowerchain.plasticcredit.MessageComposer.withTypeUrl;
 
 export default {
-
   components: {
     RotateLoader,
   },
@@ -117,13 +115,15 @@ export default {
       error: null,
       selectedId: null,
       selectedAmount: 1, // default amount
+      selectedNFTId: null,
+      nfts: [],
       currentTab: "wrapper",
       loading: false, // Set this to true or false based on your condition
-      color: 'red', // Color of the spinner
-      size: '15px', // Size of the spinner
+      color: "red", // Color of the spinner
+      size: "15px", // Size of the spinner
       denom: ref(""),
       amountToWrap: ref(""),
-      offlineSigner: window.getOfflineSigner("emp-devnet-1"),
+      offlineSigner: window.getOfflineSigner("circulus-1"),
     };
   },
 
@@ -142,6 +142,13 @@ export default {
       }
       return 0;
     },
+    // selectedNFTDetails() {
+    //   console.log(this.nfts.find(nft => nft.id === this.selectedNFTId));
+    //   console.log("nfts: " + this.nfts);
+    //   console.log("selectedNFTId: " + this.selectedNFTId);
+    //   return this.nfts.find(nft => nft.id === this.selectedNFTId);
+    //   // Logic to return details of the selected NFT
+    // },
   },
 
   mounted() {
@@ -150,140 +157,201 @@ export default {
       (newAddress, oldAddress) => {
         if (newAddress && newAddress !== oldAddress) {
           this.fetchGraphQLData();
+          this.queryNFTs();
         }
       },
       { immediate: true }
     );
-    this.addChainToKeplr();
-    this.queryNFTs();
   },
 
   methods: {
     async transferPlasticCredits() {
-      console.log("transfering plastic credits: " );
+      console.log("transfering plastic credits: ");
       try {
-    const transferCreditsMsg = transferCredits({
-      from: this.walletAddress,
-      to: "empower19247whxe6etzfdj3l6ye6hwfa3glys3pkdjp4x",
-      denom: this.denom,
-      amount: this.amountToWrap,
-      retire: false,
-      retiringEntityName: "",
-      retiringEntityAdditionalData: "",
-    });
+        const transferCreditsMsg = transferCredits({
+          from: this.walletAddress,
+          to: "empower19247whxe6etzfdj3l6ye6hwfa3glys3pkdjp4x",
+          denom: this.denom,
+          amount: this.amountToWrap,
+          retire: false,
+          retiringEntityName: "",
+          retiringEntityAdditionalData: "",
+        });
 
-    console.log("transferCreditsMsg: " + transferCreditsMsg);
-    console.log(window.getOfflineSigner("circulus-1"));
-    const chainClient = await getSigningTM37EmpowerchainClient({
-      rpcEndpoint: "https://testnet.empowerchain.io:26659",
-      signer: window.getOfflineSigner("circulus-1"),
-    });
-    const fee = {
-      gas: "200000",
-      amount: [{ amount: "1000000", denom: "umpwr" }],
-    };
-    const response = await chainClient.signAndBroadcast(
-      this.walletAddress,
-      [transferCreditsMsg],
-      fee,
-    );
-    if (response && !response.code) {
-      console.log(response);
-      console.log("Credits transferred successfully");
-    } else {
-      throw new Error("Transfering credits failed " + response.rawLog);
-    }
-  } catch (error) {
-    console.log("Credit transfer failed: " + error);
-    throw error;
-  }
-},
-
-  async grantAuthorization() {
-
-    const client = await getSigningTM37EmpowerchainClient({
-        rpcEndpoint: "0.0.0.0:26657",
-        signer: this.offlineSigner,
-    });
-    const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
-        denom: "PCRD/00710LPVHVM3WGX000000115",
-        maxCredits: "1",
-    })
-    const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
-        granter: "empower1qrfe6cx3j59wuc2g4xu3dw3sc8tl6lnfpaswzw",
-        grantee: "empower1hywmhhy3jl7j7lpcghfjpsynmy9vrr0ne2009s",
-        grant: {
-            authorization: {
-                typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
-                value: empowerchain.plasticcredit.TransferAuthorization.encode(w).finish()
-            }
-        }
-    })
-      await client.signAndBroadcast(
+        console.log("transferCreditsMsg: " + transferCreditsMsg);
+        console.log(window.getOfflineSigner("circulus-1"));
+        const chainClient = await getSigningTM37EmpowerchainClient({
+          rpcEndpoint: "https://testnet.empowerchain.io:26659",
+          signer: window.getOfflineSigner("circulus-1"),
+        });
+        const fee = {
+          gas: "200000",
+          amount: [{ amount: "1000000", denom: "umpwr" }],
+        };
+        const response = await chainClient.signAndBroadcast(
           this.walletAddress,
-          [authz],
-          {
-              amount: [{ amount: "100000", denom: "umpwr" }],
-              gas: "200000",
-          }
-      );
-  },
-
-  async addChainToKeplr() {
-    if (!window.getOfflineSigner || !window.keplr) {
-        alert("Please install keplr extension");
-    } else {
-        try {
-          await window.keplr.experimentalSuggestChain({
-            chainId: "emp-devnet-1",
-        chainName: "EmpowerChain Local Server",
-        rpc: "tpc://0.0.0.0:26657",
-        rest: "http://0.0.0.0:1317",
-        bip44: {
-            coinType: 118,
-        },
-        bech32Config: {
-            bech32PrefixAccAddr: "empower",
-            bech32PrefixAccPub: "empower" + "pub",
-            bech32PrefixValAddr: "empower" + "valoper",
-            bech32PrefixValPub: "empower" + "valoperpub",
-            bech32PrefixConsAddr: "empower" + "valcons",
-            bech32PrefixConsPub: "empower" + "valconspub",
-        },
-        currencies: [
-            {
-                coinDenom: "MPWR",
-                coinMinimalDenom: "umpwr",
-                coinDecimals: 6,
-                coinGeckoId: "mpwr",
-            },
-        ],
-        feeCurrencies: [
-            {
-                coinDenom: "MPWR",
-                coinMinimalDenom: "umpwr",
-                coinDecimals: 6,
-                gasPriceStep: {
-                    low: 0.01,
-                    average: 0.025,
-                    high: 0.04,
-                },
-            },
-        ],
-        stakeCurrency: {
-            coinDenom: "MPWR",
-            coinMinimalDenom: "umpwr",
-            coinDecimals: 6,
-        },
-});
-
-            alert("Chain added to Keplr");
-        } catch (error) {
-            console.error("Error adding chain: ", error);
+          [transferCreditsMsg],
+          fee
+        );
+        if (response && !response.code) {
+          console.log(response);
+          console.log("Credits transferred successfully");
+        } else {
+          throw new Error("Transfering credits failed " + response.rawLog);
         }
-    }
-},
+      } catch (error) {
+        console.log("Credit transfer failed: " + error);
+        throw error;
+      }
+    },
 
+    // async grantAuthorization() {
+    //   const client = await getSigningTM37EmpowerchainClient({
+    //     rpcEndpoint: "https://testnet.empowerchain.io:26659",
+    //     signer: this.offlineSigner,
+    //   });
+    //   const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
+    //     denom: "PCRD/00710LPVHVM3WGX000000115",
+    //     maxCredits: "1",
+    //   });
+    //   const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
+    //     granter: this.walletAddress,
+    //     grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
+    //     grant: {
+    //       authorization: {
+    //         typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
+    //         value:
+    //           empowerchain.plasticcredit.TransferAuthorization.encode(
+    //             w
+    //           ).finish(),
+    //       },
+    //     },
+    //   });
+
+    //   await client.signAndBroadcast(this.walletAddress, [authz], {
+    //     amount: [{ amount: "100000", denom: "umpwr" }],
+    //     gas: "200000",
+    //   });
+    // },
+
+    async grantAuthorization() {
+      const client = await getSigningTM37EmpowerchainClient({
+        rpcEndpoint: "https://testnet.empowerchain.io:26659",
+        signer: this.offlineSigner,
+      });
+
+      // GenericAuthorization
+      const genericAuthz =
+        cosmos.authz.v1beta1.GenericAuthorization.fromPartial({
+          msg: "/cosmos.bank.v1beta1.MsgSend", // Or any other message type you wish to authorize
+        });
+
+      const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
+        granter: this.walletAddress,
+        grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
+        grant: {
+          authorization: {
+            typeUrl: "/cosmos.authz.v1beta1.GenericAuthorization",
+            value:
+              cosmos.authz.v1beta1.GenericAuthorization.encode(
+                genericAuthz
+              ).finish(),
+          },
+        },
+      });
+
+      await client.signAndBroadcast(this.walletAddress, [authz], {
+        amount: [{ amount: "100000", denom: "umpwr" }],
+        gas: "200000",
+      });
+    },
+
+    async approveNFT() {
+      try {
+        const approveMsg = {
+          approve: {
+            spender: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739", // Address to be approved
+            token_id: this.selectedNFTId, // Token ID to approve
+            expires: null,
+          },
+        };
+        const gasPrice = GasPrice.fromString("0.025umpwr");
+        const tmClient = await Tendermint37Client.connect(
+          "https://testnet.empowerchain.io:26659"
+        );
+        const client = await SigningCosmWasmClient.createWithSigner(
+          tmClient,
+          this.offlineSigner,
+          { gasPrice }
+        );
+        // Send the transaction
+        const result = await client.execute(
+          this.walletAddress,
+          "empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", // Contract address
+          approveMsg,
+          "auto" // Automatically set fee
+        );
+        console.log("Transaction result:", result);
+      } catch (error) {
+        console.error("Error during approval: " + error);
+        throw error;
+      }
+    },
+
+    // async addChainToKeplr() {
+    //   if (!window.getOfflineSigner || !window.keplr) {
+    //     alert("Please install keplr extension");
+    //   } else {
+    //     try {
+    //       await window.keplr.experimentalSuggestChain({
+    //         chainId: "emp-devnet-1",
+    //         chainName: "EmpowerChain Local Server",
+    //         rpc: "tpc://0.0.0.0:26657",
+    //         rest: "http://0.0.0.0:1317",
+    //         bip44: {
+    //           coinType: 118,
+    //         },
+    //         bech32Config: {
+    //           bech32PrefixAccAddr: "empower",
+    //           bech32PrefixAccPub: "empower" + "pub",
+    //           bech32PrefixValAddr: "empower" + "valoper",
+    //           bech32PrefixValPub: "empower" + "valoperpub",
+    //           bech32PrefixConsAddr: "empower" + "valcons",
+    //           bech32PrefixConsPub: "empower" + "valconspub",
+    //         },
+    //         currencies: [
+    //           {
+    //             coinDenom: "MPWR",
+    //             coinMinimalDenom: "umpwr",
+    //             coinDecimals: 6,
+    //             coinGeckoId: "mpwr",
+    //           },
+    //         ],
+    //         feeCurrencies: [
+    //           {
+    //             coinDenom: "MPWR",
+    //             coinMinimalDenom: "umpwr",
+    //             coinDecimals: 6,
+    //             gasPriceStep: {
+    //               low: 0.01,
+    //               average: 0.025,
+    //               high: 0.04,
+    //             },
+    //           },
+    //         ],
+    //         stakeCurrency: {
+    //           coinDenom: "MPWR",
+    //           coinMinimalDenom: "umpwr",
+    //           coinDecimals: 6,
+    //         },
+    //       });
+
+    //       alert("Chain added to Keplr");
+    //     } catch (error) {
+    //       console.error("Error adding chain: ", error);
+    //     }
+    //   }
+    // },
 
     async fetchGraphQLData() {
       if (!this.walletAddress) {
@@ -329,7 +397,6 @@ export default {
     },
 
     async wrapNFT() {
-
       //await this.grantAuthorization()
 
       this.loading = true;
@@ -361,7 +428,7 @@ export default {
         Swal.fire({
           title: "Congratulations!",
           text: "You wrapped the Plastic Credits!",
-          icon: "success"
+          icon: "success",
         });
         // Handle the response as needed
       } catch (error) {
@@ -374,31 +441,40 @@ export default {
 
     async unwrapNFT() {
       this.loading = true;
+
       try {
-        const result = await this.$axios.post(
-          "/api/unwrap-nft",
-        );
+        // First, get the approval
+        await this.approveNFT();
+
+        // Then proceed with the unwrapping process
+        const result = await this.$axios.post("/api/unwrap-nft", {
+          token_id: this.selectedNFTId,
+        });
         console.log(result);
         Swal.fire({
           title: "Congratulations!",
           text: "You unwrapped your NFT",
-          icon: "success"
+          icon: "success",
         });
-        // Handle the response as needed
+        // Further handling
       } catch (error) {
-        console.error("Error sending data to the server", error);
-        this.error = "Failed to send data to the server.";
+        console.error("Error during unwrap operation", error);
+        this.error = "Failed to unwrap NFT.";
+      } finally {
+        this.queryNFTs();
+        this.loading = false;
       }
-      this.loading = false;
     },
 
     async queryNFTs() {
       this.loading = true;
       try {
-        const result = await this.$axios.post(
-          "/api/query-nfts",
-        );
+        const result = await this.$axios.post("/api/query-nfts", {
+          walletAddress: this.walletAddress,
+        });
         console.log(result);
+        console.log(result.data.queryResult.tokens);
+        this.nfts = result.data.queryResult.tokens;
         // Handle the response as needed
       } catch (error) {
         console.error("Error sending data to the server", error);
@@ -407,12 +483,18 @@ export default {
       this.loading = false;
     },
   },
+  watch: {
+    selectedNFTId(newVal) {
+      console.log("Selected NFT ID:", newVal);
+      this.selectedNFTId = newVal;
+    },
+  },
 };
 </script>
 
 <style>
-
-html, body {
+html,
+body {
   font-family: sans-serif;
   background-color: black;
   box-sizing: border-box;
@@ -469,11 +551,11 @@ html, body {
 
 .wrapBox {
   padding: 10px;
-  background-color:  rgb(0, 193, 49);
+  background-color: rgb(0, 193, 49);
   width: 40%;
   height: 40%;
   border-radius: 5%;
-  box-shadow: 0px 0px 20px 5px  rgb(0, 193, 49);
+  box-shadow: 0px 0px 20px 5px rgb(0, 193, 49);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -493,9 +575,9 @@ html, body {
 }
 
 .selectedTab {
-    background-color: rgb(2, 43, 12);
-    color: white;
-  }
+  background-color: rgb(2, 43, 12);
+  color: white;
+}
 
 .amountBox {
   display: flex;

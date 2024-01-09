@@ -17,7 +17,7 @@ import {
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
 
-  const privateKeyHex = '70d41ed8ed63f3377b99ae3c2e4b4bd93266237c90fae963943d4c1499fdf9f3'; // Replace with your actual private key in hex format
+  const privateKeyHex = '2b0837f020659504b4ee789bbeb1a5934a612bcc0f32e4c2e31020a294b1a606'; // Replace with your actual private key in hex format
   //const privateKey = Buffer.from(privateKeyHex, 'hex');
 
   const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
@@ -29,22 +29,18 @@ app.use(bodyParser.json());
       console.log("firstAccount: ", firstAccount);
       const gasPrice = GasPrice.fromString("0.025umpwr");
       const tmClient = await Tendermint37Client.connect(rpcEndpoint);
-      // TODO replace with empowerjs getter when path registry issue is solved
       const client = await SigningCosmWasmClient.createWithSigner(tmClient, wallet, { gasPrice });
-      //const client = await getSigningTM37EmpowerchainClient(rpcEndpoint, wallet, { gasPrice });
       return await client.execute(firstAccount.address, contractAddress, mintMsg, "auto");
   }
 
-  async function queryNFTs(contractAddress, rpcEndpoint) {
+  async function queryNFTs(contractAddress, rpcEndpoint, walletAddress) {
     const wallet = await DirectSecp256k1Wallet.fromKey(privateKey, 'empower');
     const [firstAccount] = await wallet.getAccounts();
     console.log("firstAccount: ", firstAccount);
     const gasPrice = GasPrice.fromString("0.025umpwr");
     const tmClient = await Tendermint37Client.connect(rpcEndpoint);
-    // TODO replace with empowerjs getter when path registry issue is solved
     const client = await SigningCosmWasmClient.createWithSigner(tmClient, wallet, { gasPrice });
-    //const client = await getSigningTM37EmpowerchainClient(rpcEndpoint, wallet, { gasPrice });
-    return await client.queryContractSmart(contractAddress, {tokens: {owner: firstAccount.address}});
+    return await client.queryContractSmart(contractAddress, {tokens: {owner: walletAddress}});
   }
 
   async function burnNft(token_id) {
@@ -52,11 +48,10 @@ app.use(bodyParser.json());
     const [firstAccount] = await wallet.getAccounts();
     console.log("firstAccount: ", firstAccount);
     const gasPrice = GasPrice.fromString("0.025umpwr");
-    const tmClient = await Tendermint37Client.connect("http://localhost:26657");
-    // TODO replace with empowerjs getter when path registry issue is solved
+    const tmClient = await Tendermint37Client.connect("https://testnet.empowerchain.io:26659");
     const client = await SigningCosmWasmClient.createWithSigner(tmClient, wallet, { gasPrice });
     //const client = await getSigningTM37EmpowerchainClient(rpcEndpoint, wallet, { gasPrice });
-    return await client.execute(firstAccount.address, "empower14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sfg4umu", {burn: {token_id: token_id}}, "auto");
+    return await client.execute(firstAccount.address, "empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", {burn: {token_id: token_id}}, "auto");
   }
 
 function extractIpfsHashFromResponse(plasticCreditResponse) {
@@ -117,7 +112,7 @@ app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
             //res.send({ mintMsg, metadata, ipfsData });
             console.log('Minting NFT with message:', mintMsg);
             try {
-                const mintResult = await mintNFT("empower14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sfg4umu", mintMsg, "0.0.0.0:26657");
+                const mintResult = await mintNFT("empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", mintMsg, "https://testnet.empowerchain.io:26659");
                 const mintResultSerialized = JSON.parse(JSON.stringify(mintResult, (key, value) =>
                 typeof value === 'bigint' ? value.toString() : value
             ));
@@ -137,13 +132,13 @@ app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
 });
 
 app.post('/unwrap-nft', async (req, res) => {
-    // const { token_id } = req.body;
+    const { token_id } = req.body;
 
-    // if (!token_id) {
-    //     return res.status(400).send('Token ID is required');
-    // }
+    if (!token_id) {
+        return res.status(400).send('Token ID is required');
+    }
     try {
-        const burnResult = await burnNft("2");
+        const burnResult = await burnNft(token_id);
         const burnResultSerialized = JSON.parse(JSON.stringify(burnResult, (key, value) =>
         typeof value === 'bigint' ? value.toString() : value
     ));
@@ -156,13 +151,13 @@ app.post('/unwrap-nft', async (req, res) => {
 });
 
 app.post('/query-nfts', async (req, res) => {
-    // const { token_id } = req.body;
+    const { walletAddress } = req.body;
 
-    // if (!token_id) {
-    //     return res.status(400).send('Token ID is required');
-    // }
+    if (!walletAddress) {
+        return res.status(400).send('Token ID is required');
+    }
     try {
-        const queryResult = await queryNFTs("empower14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sfg4umu", "http://localhost:26657");
+        const queryResult = await queryNFTs("empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", "https://testnet.empowerchain.io:26659", walletAddress);
         const queryResultSerialized = JSON.parse(JSON.stringify(queryResult, (key, value) =>
         typeof value === 'bigint' ? value.toString() : value
     ));
