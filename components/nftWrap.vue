@@ -1,6 +1,6 @@
 <template>
   <div class="wrapPage">
-    <button @click="this.grantAuthorization">HALLOOOOOOO</button>
+    <button @click="this.transferPlasticCredits">HALLOOOOOOO</button>
     <h1 class="mainTitle">Plastic Credit NFT Wrapper</h1>
     <div class="wrapBox">
       <div v-if="loading" class="loading">
@@ -166,13 +166,14 @@ export default {
 
   methods: {
     async transferPlasticCredits() {
+      console.log(this.denom, this.selectedAmount);
       console.log("transfering plastic credits: ");
       try {
         const transferCreditsMsg = transferCredits({
           from: this.walletAddress,
           to: "empower19247whxe6etzfdj3l6ye6hwfa3glys3pkdjp4x",
           denom: this.denom,
-          amount: this.amountToWrap,
+          amount: this.selectedAmount,
           retire: false,
           retiringEntityName: "",
           retiringEntityAdditionalData: "",
@@ -205,24 +206,62 @@ export default {
       }
     },
 
+    async grantAuthorization() {
+      if (this.walletAddress == "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739") {
+        alert("You are already authorized");
+      } else {
+
+      const client = await getSigningTM37EmpowerchainClient({
+        rpcEndpoint: "https://testnet.empowerchain.io:26659",
+        signer: this.offlineSigner,
+      });
+      const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
+        denom: this.denom,
+        maxCredits: this.selectedAmount,
+      });
+      const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
+        granter: this.walletAddress,
+        grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
+        grant: {
+          authorization: {
+            typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
+            value:
+              empowerchain.plasticcredit.TransferAuthorization.encode(
+                w
+              ).finish(),
+          },
+        
+        },
+      });
+
+      await client.signAndBroadcast(this.walletAddress, [authz], {
+        amount: [{ amount: "100000", denom: "umpwr" }],
+        gas: "200000",
+      });
+    }
+  },
+
     // async grantAuthorization() {
     //   const client = await getSigningTM37EmpowerchainClient({
     //     rpcEndpoint: "https://testnet.empowerchain.io:26659",
     //     signer: this.offlineSigner,
     //   });
-    //   const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
-    //     denom: "PCRD/00710LPVHVM3WGX000000115",
-    //     maxCredits: "1",
-    //   });
+
+    //   // GenericAuthorization
+    //   const genericAuthz =
+    //     cosmos.authz.v1beta1.GenericAuthorization.fromPartial({
+    //       msg: "/cosmos.bank.v1beta1.MsgSend", // Or any other message type you wish to authorize
+    //     });
+
     //   const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
     //     granter: this.walletAddress,
     //     grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
     //     grant: {
     //       authorization: {
-    //         typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
+    //         typeUrl: "/cosmos.authz.v1beta1.GenericAuthorization",
     //         value:
-    //           empowerchain.plasticcredit.TransferAuthorization.encode(
-    //             w
+    //           cosmos.authz.v1beta1.GenericAuthorization.encode(
+    //             genericAuthz
     //           ).finish(),
     //       },
     //     },
@@ -233,38 +272,6 @@ export default {
     //     gas: "200000",
     //   });
     // },
-
-    async grantAuthorization() {
-      const client = await getSigningTM37EmpowerchainClient({
-        rpcEndpoint: "https://testnet.empowerchain.io:26659",
-        signer: this.offlineSigner,
-      });
-
-      // GenericAuthorization
-      const genericAuthz =
-        cosmos.authz.v1beta1.GenericAuthorization.fromPartial({
-          msg: "/cosmos.bank.v1beta1.MsgSend", // Or any other message type you wish to authorize
-        });
-
-      const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
-        granter: this.walletAddress,
-        grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
-        grant: {
-          authorization: {
-            typeUrl: "/cosmos.authz.v1beta1.GenericAuthorization",
-            value:
-              cosmos.authz.v1beta1.GenericAuthorization.encode(
-                genericAuthz
-              ).finish(),
-          },
-        },
-      });
-
-      await client.signAndBroadcast(this.walletAddress, [authz], {
-        amount: [{ amount: "100000", denom: "umpwr" }],
-        gas: "200000",
-      });
-    },
 
     async approveNFT() {
       try {
@@ -298,61 +305,6 @@ export default {
       }
     },
 
-    // async addChainToKeplr() {
-    //   if (!window.getOfflineSigner || !window.keplr) {
-    //     alert("Please install keplr extension");
-    //   } else {
-    //     try {
-    //       await window.keplr.experimentalSuggestChain({
-    //         chainId: "emp-devnet-1",
-    //         chainName: "EmpowerChain Local Server",
-    //         rpc: "tpc://0.0.0.0:26657",
-    //         rest: "http://0.0.0.0:1317",
-    //         bip44: {
-    //           coinType: 118,
-    //         },
-    //         bech32Config: {
-    //           bech32PrefixAccAddr: "empower",
-    //           bech32PrefixAccPub: "empower" + "pub",
-    //           bech32PrefixValAddr: "empower" + "valoper",
-    //           bech32PrefixValPub: "empower" + "valoperpub",
-    //           bech32PrefixConsAddr: "empower" + "valcons",
-    //           bech32PrefixConsPub: "empower" + "valconspub",
-    //         },
-    //         currencies: [
-    //           {
-    //             coinDenom: "MPWR",
-    //             coinMinimalDenom: "umpwr",
-    //             coinDecimals: 6,
-    //             coinGeckoId: "mpwr",
-    //           },
-    //         ],
-    //         feeCurrencies: [
-    //           {
-    //             coinDenom: "MPWR",
-    //             coinMinimalDenom: "umpwr",
-    //             coinDecimals: 6,
-    //             gasPriceStep: {
-    //               low: 0.01,
-    //               average: 0.025,
-    //               high: 0.04,
-    //             },
-    //           },
-    //         ],
-    //         stakeCurrency: {
-    //           coinDenom: "MPWR",
-    //           coinMinimalDenom: "umpwr",
-    //           coinDecimals: 6,
-    //         },
-    //       });
-
-    //       alert("Chain added to Keplr");
-    //     } catch (error) {
-    //       console.error("Error adding chain: ", error);
-    //     }
-    //   }
-    // },
-
     async fetchGraphQLData() {
       if (!this.walletAddress) {
         this.error = "Wallet address is not connected.";
@@ -366,6 +318,7 @@ export default {
             creditBalances {
               nodes {
                 amountActive
+                amountRetired
                 creditCollection {
                   denom
                   metadataUris {
@@ -390,6 +343,7 @@ export default {
         );
         console.log(response);
         this.creditBalances = response.wallet.creditBalances.nodes;
+        this.denom = this.creditBalances[0].creditCollection.denom;
       } catch (error) {
         this.error = error.message;
       }
@@ -397,7 +351,7 @@ export default {
     },
 
     async wrapNFT() {
-      //await this.grantAuthorization()
+      await this.grantAuthorization()
 
       this.loading = true;
       if (this.selectedId === null) {

@@ -51,7 +51,7 @@ app.use(bodyParser.json());
     const tmClient = await Tendermint37Client.connect("https://testnet.empowerchain.io:26659");
     const client = await SigningCosmWasmClient.createWithSigner(tmClient, wallet, { gasPrice });
     //const client = await getSigningTM37EmpowerchainClient(rpcEndpoint, wallet, { gasPrice });
-    return await client.execute(firstAccount.address, "empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", {burn: {token_id: token_id}}, "auto");
+    return await client.execute(firstAccount.address, "empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", {burn: {token_id: token_id}}, "auto");
   }
 
 function extractIpfsHashFromResponse(plasticCreditResponse) {
@@ -106,13 +106,16 @@ app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
                 mint: {
                     owner: address,
                     token_uri: ipfsLink,
-                    token_id: token_id
+                    token_id: token_id,
+                    from: address,
+                    denom: denom,
+                    amount: Number(amountToWrap),
                 }
             };
             //res.send({ mintMsg, metadata, ipfsData });
             console.log('Minting NFT with message:', mintMsg);
             try {
-                const mintResult = await mintNFT("empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", mintMsg, "https://testnet.empowerchain.io:26659");
+                const mintResult = await mintNFT("empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", mintMsg, "https://testnet.empowerchain.io:26659");
                 const mintResultSerialized = JSON.parse(JSON.stringify(mintResult, (key, value) =>
                 typeof value === 'bigint' ? value.toString() : value
             ));
@@ -157,7 +160,7 @@ app.post('/query-nfts', async (req, res) => {
         return res.status(400).send('Token ID is required');
     }
     try {
-        const queryResult = await queryNFTs("empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", "https://testnet.empowerchain.io:26659", walletAddress);
+        const queryResult = await queryNFTs("empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", "https://testnet.empowerchain.io:26659", walletAddress);
         const queryResultSerialized = JSON.parse(JSON.stringify(queryResult, (key, value) =>
         typeof value === 'bigint' ? value.toString() : value
     ));
