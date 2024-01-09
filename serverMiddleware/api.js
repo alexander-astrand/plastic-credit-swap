@@ -9,15 +9,12 @@ const app = express();
 const pinataSDK = require('@pinata/sdk');
 const pinata = new pinataSDK({ pinataJWTKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJhMzIzMzhjNS1hNzBiLTRhZmMtYTNkYS0yODU1Y2U2NjQxNWQiLCJlbWFpbCI6InBpbmF0YUBhc3RyYW5kLnh5eiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaW5fcG9saWN5Ijp7InJlZ2lvbnMiOlt7ImlkIjoiRlJBMSIsImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxfSx7ImlkIjoiTllDMSIsImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxfV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6IkFDVElWRSJ9LCJhdXRoZW50aWNhdGlvblR5cGUiOiJzY29wZWRLZXkiLCJzY29wZWRLZXlLZXkiOiI0NzUwMGU3NDUxMjg5YThmYmE3ZiIsInNjb3BlZEtleVNlY3JldCI6Ijk3MTQ3NGMzMGQ4ZjI4YWQwNDg0ODc4NzMwYWI3NDUxNWEzNmNkZDkyYWVmY2VlMTk1ODk4ZWQwMDljNjUzMjkiLCJpYXQiOjE3MDM3MjI5MTV9.xFfwT3wysY99clpdMNi1epfosLGip5XpP3Nlm8XzQro'});
 const { GasPrice } = require('@cosmjs/stargate');
-import {
-    getSigningCosmWasmTM37EmpowerchainClient,
-    getSigningTM37EmpowerchainClient,
-    } from "@empower-plastic/empowerjs";
+require('dotenv').config();
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.json());
 
-  const privateKeyHex = '2b0837f020659504b4ee789bbeb1a5934a612bcc0f32e4c2e31020a294b1a606'; // Replace with your actual private key in hex format
+  const privateKeyHex = process.env.PRIVATE_KEY; // Replace with your actual private key in hex format
   //const privateKey = Buffer.from(privateKeyHex, 'hex');
 
   const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
@@ -50,7 +47,6 @@ app.use(bodyParser.json());
     const gasPrice = GasPrice.fromString("0.025umpwr");
     const tmClient = await Tendermint37Client.connect("https://testnet.empowerchain.io:26659");
     const client = await SigningCosmWasmClient.createWithSigner(tmClient, wallet, { gasPrice });
-    //const client = await getSigningTM37EmpowerchainClient(rpcEndpoint, wallet, { gasPrice });
     return await client.execute(firstAccount.address, "empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", {burn: {token_id: token_id}}, "auto");
   }
 
