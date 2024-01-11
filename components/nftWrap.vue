@@ -162,6 +162,16 @@ export default {
       },
       { immediate: true }
     );
+    watch(
+      () => this.selectedId,
+      (newId, oldId) => {
+        if (newId && newId !== oldId) {
+          this.denom = this.creditBalances[newId].creditCollection.denom;
+          console.log(this.denom);
+        }
+      },
+      { immediate: true }
+    );
   },
 
   methods: {
@@ -170,10 +180,10 @@ export default {
       console.log("transfering plastic credits: ");
       try {
         const transferCreditsMsg = transferCredits({
-          from: this.walletAddress,
-          to: "empower19247whxe6etzfdj3l6ye6hwfa3glys3pkdjp4x",
-          denom: this.denom,
-          amount: this.selectedAmount,
+          from: "empower19247whxe6etzfdj3l6ye6hwfa3glys3pkdjp4x",
+          to: "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5",
+          denom: "PCRD/PCRD/1010",
+          amount: BigInt(1),
           retire: false,
           retiringEntityName: "",
           retiringEntityAdditionalData: "",
@@ -205,41 +215,60 @@ export default {
         throw error;
       }
     },
-
     async grantAuthorization() {
-      if (this.walletAddress == "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739") {
-        alert("You are already authorized");
-      } else {
+      try {
+        if (
+          this.walletAddress ===
+          "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739"
+        ) {
+          alert("You are already authorized");
+          return; // Return early to avoid further processing
+        }
 
-      const client = await getSigningTM37EmpowerchainClient({
-        rpcEndpoint: "https://testnet.empowerchain.io:26659",
-        signer: this.offlineSigner,
-      });
-      const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
-        denom: this.denom,
-        maxCredits: this.selectedAmount,
-      });
-      const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
-        granter: this.walletAddress,
-        grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
-        grant: {
-          authorization: {
-            typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
-            value:
-              empowerchain.plasticcredit.TransferAuthorization.encode(
-                w
-              ).finish(),
+        const client = await getSigningTM37EmpowerchainClient({
+          rpcEndpoint: "https://testnet.empowerchain.io:26659",
+          signer: this.offlineSigner,
+        });
+
+        const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
+          denom: this.denom,
+          maxCredits: this.selectedActiveAmount,
+        });
+
+        const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
+          granter: this.walletAddress,
+          grantee: "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5",
+          grant: {
+            authorization: {
+              typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
+              value:
+                empowerchain.plasticcredit.TransferAuthorization.encode(
+                  w
+                ).finish(),
+            },
           },
-        
-        },
-      });
+        });
 
-      await client.signAndBroadcast(this.walletAddress, [authz], {
-        amount: [{ amount: "100000", denom: "umpwr" }],
-        gas: "200000",
-      });
-    }
-  },
+        const response = await client.signAndBroadcast(
+          this.walletAddress,
+          [authz],
+          {
+            amount: [{ amount: "100000", denom: "umpwr" }],
+            gas: "200000",
+          }
+        );
+
+        // Handle response here (e.g., check if the transaction was successful)
+        console.log("Transaction response:", response);
+      } catch (error) {
+        // Handle or log the error
+        console.error(
+          "An error occurred during the authorization process:",
+          error
+        );
+        alert("Failed to grant authorization. Please try again.");
+      }
+    },
 
     // async grantAuthorization() {
     //   const client = await getSigningTM37EmpowerchainClient({
@@ -294,7 +323,7 @@ export default {
         // Send the transaction
         const result = await client.execute(
           this.walletAddress,
-          "empower1eyfccmjm6732k7wp4p6gdjwhxjwsvje44j0hfx8nkgrm8fs7vqfs68uyhw", // Contract address
+          "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5", // Contract address
           approveMsg,
           "auto" // Automatically set fee
         );
@@ -351,7 +380,8 @@ export default {
     },
 
     async wrapNFT() {
-      await this.grantAuthorization()
+      console.log(this.denom, this.selectedAmount);
+      await this.grantAuthorization();
 
       this.loading = true;
       if (this.selectedId === null) {
@@ -365,7 +395,7 @@ export default {
         return;
       }
 
-      let denom = selectedCollection.creditCollection.denom;
+      let denom = this.denom;
       let amountToWrap = this.selectedActiveAmount; // Ensure this is bound correctly
       const address = this.walletAddress;
 
@@ -441,6 +471,10 @@ export default {
     selectedNFTId(newVal) {
       console.log("Selected NFT ID:", newVal);
       this.selectedNFTId = newVal;
+    },
+      selectedId(newVal) {
+        console.log("Selected ID:", newVal);
+        this.selectedId = newVal;
     },
   },
 };

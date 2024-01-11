@@ -47,7 +47,7 @@ app.use(bodyParser.json());
     const gasPrice = GasPrice.fromString("0.025umpwr");
     const tmClient = await Tendermint37Client.connect("https://testnet.empowerchain.io:26659");
     const client = await SigningCosmWasmClient.createWithSigner(tmClient, wallet, { gasPrice });
-    return await client.execute(firstAccount.address, "empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", {burn: {token_id: token_id}}, "auto");
+    return await client.execute(firstAccount.address, "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5", {burn: {token_id: token_id}}, "auto");
   }
 
 function extractIpfsHashFromResponse(plasticCreditResponse) {
@@ -74,7 +74,7 @@ app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
         const plasticCreditResponse = await rpcQueryClient.empowerchain.plasticcredit.creditCollection({ denom });
         const ipfsHash = extractIpfsHashFromResponse(plasticCreditResponse);
         let ipfsData = {};
-
+        console.log("ipfsHash: ", ipfsHash);
         if (ipfsHash) {
             const ipfsHash2 = `https://ipfs.empowerchain.io/ipfs/${ipfsHash}`;
             const ipfsResponse = await axios.get(`https://ipfs.empowerchain.io/ipfs/${ipfsHash}`);
@@ -111,7 +111,7 @@ app.post('/fetch-and-mint-plastic-credit', async (req, res) => {
             //res.send({ mintMsg, metadata, ipfsData });
             console.log('Minting NFT with message:', mintMsg);
             try {
-                const mintResult = await mintNFT("empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", mintMsg, "https://testnet.empowerchain.io:26659");
+                const mintResult = await mintNFT("empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5", mintMsg, "https://testnet.empowerchain.io:26659");
                 const mintResultSerialized = JSON.parse(JSON.stringify(mintResult, (key, value) =>
                 typeof value === 'bigint' ? value.toString() : value
             ));
@@ -156,7 +156,7 @@ app.post('/query-nfts', async (req, res) => {
         return res.status(400).send('Token ID is required');
     }
     try {
-        const queryResult = await queryNFTs("empower1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucs0pkh0n", "https://testnet.empowerchain.io:26659", walletAddress);
+        const queryResult = await queryNFTs("empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5", "https://testnet.empowerchain.io:26659", walletAddress);
         const queryResultSerialized = JSON.parse(JSON.stringify(queryResult, (key, value) =>
         typeof value === 'bigint' ? value.toString() : value
     ));
