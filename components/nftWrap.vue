@@ -1,7 +1,9 @@
 <template>
   <div class="wrapPage">
-    <button @click="this.transferPlasticCredits">HALLOOOOOOO</button>
     <h1 class="mainTitle">Plastic Credit NFT Wrapper</h1>
+    <h2 class="secondaryTitle">
+      Turn your plastic credits into IBC compatible CW-721 tokens
+    </h2>
     <div class="wrapBox">
       <div v-if="loading" class="loading">
         <rotate-loader
@@ -47,13 +49,13 @@
               </select>
             </div>
             <div class="amountBox" v-if="selectedId !== null">
-              <p>Amount avaliable to wrap: {{ selectedActiveAmount }}</p>
+              <p>Amount avaliable to wrap: {{ maxAmount }}</p>
               <p>Select amount to wrap:</p>
               <input
                 type="number"
                 v-model="selectedAmount"
                 min="1"
-                :max="selectedMaxAmount"
+                :max="maxAmount"
               />
               <button @click="wrapNFT">Wrap NFT</button>
             </div>
@@ -87,22 +89,15 @@
 </template>
 
 <script>
-import { request, gql } from "graphql-request";
+import { request } from "graphql-request";
+import { walletQuery } from "../utils/graphQlQuery";
 import { watch } from "vue";
 import RotateLoader from "vue-spinner/src/RotateLoader.vue";
 import Swal from "sweetalert2";
 import { ref } from "vue";
-import {
-  cosmos,
-  empowerchain,
-  getSigningTM37EmpowerchainClient,
-} from "@empower-plastic/empowerjs";
-const { SigningCosmWasmClient } = require("@cosmjs/cosmwasm-stargate");
-const { Tendermint37Client } = require("@cosmjs/tendermint-rpc");
-const { GasPrice } = require("@cosmjs/stargate");
-
-const { transferCredits } =
-  empowerchain.plasticcredit.MessageComposer.withTypeUrl;
+require("dotenv").config();
+import { grantAuthorization } from "../utils/grantPcTransferAuthorization";
+import { approveNFT } from "../utils/nftWrapperFunctions/approveNft";
 
 export default {
   components: {
@@ -111,19 +106,19 @@ export default {
 
   data() {
     return {
-      creditBalances: [],
+      creditBalances: ref([]),
       error: null,
       selectedId: null,
       selectedAmount: 1, // default amount
       selectedNFTId: null,
-      nfts: [],
+      nfts: ref([]),
       currentTab: "wrapper",
-      loading: false, // Set this to true or false based on your condition
+      loading: false,
       color: "red", // Color of the spinner
       size: "15px", // Size of the spinner
       denom: ref(""),
       amountToWrap: ref(""),
-      offlineSigner: window.getOfflineSigner("circulus-1"),
+      offlineSigner: window.getOfflineSigner(process.env.NUXT_ENV_CHAIN_ID),
     };
   },
 
@@ -131,24 +126,15 @@ export default {
     walletAddress() {
       return this.$store.state.walletAddress;
     },
-    selectedActiveAmount() {
-      return this.selectedId !== null
-        ? this.creditBalances[this.selectedId].amountActive
-        : "";
-    },
-    selectedMaxAmount() {
-      if (this.selectedId !== null) {
+    maxAmount() {
+      if (
+        this.selectedId !== null &&
+        this.creditBalances.length > this.selectedId
+      ) {
         return this.creditBalances[this.selectedId].amountActive;
       }
       return 0;
     },
-    // selectedNFTDetails() {
-    //   console.log(this.nfts.find(nft => nft.id === this.selectedNFTId));
-    //   console.log("nfts: " + this.nfts);
-    //   console.log("selectedNFTId: " + this.selectedNFTId);
-    //   return this.nfts.find(nft => nft.id === this.selectedNFTId);
-    //   // Logic to return details of the selected NFT
-    // },
   },
 
   mounted() {
@@ -175,197 +161,22 @@ export default {
   },
 
   methods: {
-    async transferPlasticCredits() {
-      console.log(this.denom, this.selectedAmount);
-      console.log("transfering plastic credits: ");
-      try {
-        const transferCreditsMsg = transferCredits({
-          from: "empower19247whxe6etzfdj3l6ye6hwfa3glys3pkdjp4x",
-          to: "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5",
-          denom: "PCRD/PCRD/1010",
-          amount: BigInt(1),
-          retire: false,
-          retiringEntityName: "",
-          retiringEntityAdditionalData: "",
-        });
-
-        console.log("transferCreditsMsg: " + transferCreditsMsg);
-        console.log(window.getOfflineSigner("circulus-1"));
-        const chainClient = await getSigningTM37EmpowerchainClient({
-          rpcEndpoint: "https://testnet.empowerchain.io:26659",
-          signer: window.getOfflineSigner("circulus-1"),
-        });
-        const fee = {
-          gas: "200000",
-          amount: [{ amount: "1000000", denom: "umpwr" }],
-        };
-        const response = await chainClient.signAndBroadcast(
-          this.walletAddress,
-          [transferCreditsMsg],
-          fee
-        );
-        if (response && !response.code) {
-          console.log(response);
-          console.log("Credits transferred successfully");
-        } else {
-          throw new Error("Transfering credits failed " + response.rawLog);
-        }
-      } catch (error) {
-        console.log("Credit transfer failed: " + error);
-        throw error;
-      }
-    },
-    async grantAuthorization() {
-      try {
-        if (
-          this.walletAddress ===
-          "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739"
-        ) {
-          alert("You are already authorized");
-          return; // Return early to avoid further processing
-        }
-
-        const client = await getSigningTM37EmpowerchainClient({
-          rpcEndpoint: "https://testnet.empowerchain.io:26659",
-          signer: this.offlineSigner,
-        });
-
-        const w = empowerchain.plasticcredit.TransferAuthorization.fromPartial({
-          denom: this.denom,
-          maxCredits: this.selectedActiveAmount,
-        });
-
-        const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
-          granter: this.walletAddress,
-          grantee: "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5",
-          grant: {
-            authorization: {
-              typeUrl: "/empowerchain.plasticcredit.TransferAuthorization",
-              value:
-                empowerchain.plasticcredit.TransferAuthorization.encode(
-                  w
-                ).finish(),
-            },
-          },
-        });
-
-        const response = await client.signAndBroadcast(
-          this.walletAddress,
-          [authz],
-          {
-            amount: [{ amount: "100000", denom: "umpwr" }],
-            gas: "200000",
-          }
-        );
-
-        // Handle response here (e.g., check if the transaction was successful)
-        console.log("Transaction response:", response);
-      } catch (error) {
-        // Handle or log the error
-        console.error(
-          "An error occurred during the authorization process:",
-          error
-        );
-        alert("Failed to grant authorization. Please try again.");
-      }
-    },
-
-    // async grantAuthorization() {
-    //   const client = await getSigningTM37EmpowerchainClient({
-    //     rpcEndpoint: "https://testnet.empowerchain.io:26659",
-    //     signer: this.offlineSigner,
-    //   });
-
-    //   // GenericAuthorization
-    //   const genericAuthz =
-    //     cosmos.authz.v1beta1.GenericAuthorization.fromPartial({
-    //       msg: "/cosmos.bank.v1beta1.MsgSend", // Or any other message type you wish to authorize
-    //     });
-
-    //   const authz = cosmos.authz.v1beta1.MessageComposer.withTypeUrl.grant({
-    //     granter: this.walletAddress,
-    //     grantee: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739",
-    //     grant: {
-    //       authorization: {
-    //         typeUrl: "/cosmos.authz.v1beta1.GenericAuthorization",
-    //         value:
-    //           cosmos.authz.v1beta1.GenericAuthorization.encode(
-    //             genericAuthz
-    //           ).finish(),
-    //       },
-    //     },
-    //   });
-
-    //   await client.signAndBroadcast(this.walletAddress, [authz], {
-    //     amount: [{ amount: "100000", denom: "umpwr" }],
-    //     gas: "200000",
-    //   });
-    // },
-
-    async approveNFT() {
-      try {
-        const approveMsg = {
-          approve: {
-            spender: "empower1y2cc50x64vslpqsmz8x2tcj8h3w0l6mpx87739", // Address to be approved
-            token_id: this.selectedNFTId, // Token ID to approve
-            expires: null,
-          },
-        };
-        const gasPrice = GasPrice.fromString("0.025umpwr");
-        const tmClient = await Tendermint37Client.connect(
-          "https://testnet.empowerchain.io:26659"
-        );
-        const client = await SigningCosmWasmClient.createWithSigner(
-          tmClient,
-          this.offlineSigner,
-          { gasPrice }
-        );
-        // Send the transaction
-        const result = await client.execute(
-          this.walletAddress,
-          "empower10qt8wg0n7z740ssvf3urmvgtjhxpyp74hxqvqt7z226gykuus7eq0su4x5", // Contract address
-          approveMsg,
-          "auto" // Automatically set fee
-        );
-        console.log("Transaction result:", result);
-      } catch (error) {
-        console.error("Error during approval: " + error);
-        throw error;
-      }
-    },
-
     async fetchGraphQLData() {
       if (!this.walletAddress) {
-        this.error = "Wallet address is not connected.";
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Wallet not connected, please connect wallet",
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
         return;
       }
       this.loading = true;
 
-      const query = gql`
-        query Wallet($id: String!) {
-          wallet(id: $id) {
-            creditBalances {
-              nodes {
-                amountActive
-                amountRetired
-                creditCollection {
-                  denom
-                  metadataUris {
-                    nodes {
-                      url
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      `;
-
       try {
         const response = await request(
           "https://testnet.empowerchain.io:3000/",
-          query,
+          walletQuery,
           {
             id: this.walletAddress,
           }
@@ -374,29 +185,67 @@ export default {
         this.creditBalances = response.wallet.creditBalances.nodes;
         this.denom = this.creditBalances[0].creditCollection.denom;
       } catch (error) {
-        this.error = error.message;
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: error.message,
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
       }
       this.loading = false;
     },
 
     async wrapNFT() {
-      console.log(this.denom, this.selectedAmount);
-      await this.grantAuthorization();
-
       this.loading = true;
+
+      console.log(this.denom, this.selectedAmount);
+
       if (this.selectedId === null) {
         this.error = "Please select a credit collection.";
+        this.loading = false;
         return;
       }
 
       const selectedCollection = this.creditBalances[this.selectedId];
       if (!selectedCollection) {
         this.error = "Selected credit collection not found.";
+        this.loading = false;
         return;
       }
 
+      try {
+        // Attempt to grant authorization
+        const isAuthorized = await grantAuthorization(
+          this.walletAddress,
+          this.offlineSigner,
+          this.denom,
+          this.selectedAmount
+        );
+
+        if (!isAuthorized) {
+          Swal.fire({
+            icon: "error",
+            title: "Oops...",
+            text: "Authorization failed. Please try again.",
+            footer: '<a href="#">Why do I have this issue?</a>',
+          });
+          return;
+        }
+      } catch (error) {
+        console.error("Authorization error:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Authorization failed. Please try again.",
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
+        return;
+      } finally {
+        this.loading = false;
+      }
+
       let denom = this.denom;
-      let amountToWrap = this.selectedActiveAmount; // Ensure this is bound correctly
+      let amountToWrap = this.selectedAmount; // Ensure this is bound correctly
       const address = this.walletAddress;
 
       try {
@@ -409,18 +258,29 @@ export default {
           }
         );
         console.log(result);
-        Swal.fire({
-          title: "Congratulations!",
-          text: "You wrapped the Plastic Credits!",
-          icon: "success",
-        });
-        // Handle the response as needed
+
+        setTimeout(() => {
+          this.queryNFTs();
+          this.fetchGraphQLData();
+          this.selectedId = null;
+          this.selectedAmount = 1;
+          Swal.fire({
+            title: "Congratulations!",
+            text: "You wrapped the Plastic Credits!",
+            icon: "success",
+          });
+        }, 7000);
       } catch (error) {
         console.error("Error sending data to the server", error);
-        this.error = "Failed to send data to the server.";
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Failed to send data to server.",
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
+      } finally {
+        this.loading = false;
       }
-      this.fetchGraphQLData();
-      this.loading = false;
     },
 
     async unwrapNFT() {
@@ -428,24 +288,37 @@ export default {
 
       try {
         // First, get the approval
-        await this.approveNFT();
+        await approveNFT(
+          this.selectedNFTId,
+          this.offlineSigner,
+          this.walletAddress
+        );
 
         // Then proceed with the unwrapping process
         const result = await this.$axios.post("/api/unwrap-nft", {
           token_id: this.selectedNFTId,
         });
         console.log(result);
-        Swal.fire({
-          title: "Congratulations!",
-          text: "You unwrapped your NFT",
-          icon: "success",
-        });
+        setTimeout(() => {
+          this.selectedActiveAmount = 0;
+          this.queryNFTs();
+          this.fetchGraphQLData();
+          this.loading = false;
+          Swal.fire({
+            title: "Congratulations!",
+            text: "You unwrapped your NFT",
+            icon: "success",
+          });
+        }, 4000);
         // Further handling
       } catch (error) {
         console.error("Error during unwrap operation", error);
-        this.error = "Failed to unwrap NFT.";
-      } finally {
-        this.queryNFTs();
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Failed to unwrap NFT.",
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
         this.loading = false;
       }
     },
@@ -462,7 +335,12 @@ export default {
         // Handle the response as needed
       } catch (error) {
         console.error("Error sending data to the server", error);
-        this.error = "Failed to send data to the server.";
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Failed to send data to server.",
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
       }
       this.loading = false;
     },
@@ -472,9 +350,9 @@ export default {
       console.log("Selected NFT ID:", newVal);
       this.selectedNFTId = newVal;
     },
-      selectedId(newVal) {
-        console.log("Selected ID:", newVal);
-        this.selectedId = newVal;
+    selectedId(newVal) {
+      console.log("Selected ID:", newVal);
+      this.selectedId = newVal;
     },
   },
 };
@@ -519,7 +397,7 @@ body {
 
 .mainTitle {
   color: white;
-  margin-bottom: 30px;
+  margin-bottom: 0px;
   font-size: 50px;
 }
 
@@ -543,7 +421,7 @@ body {
   width: 40%;
   height: 40%;
   border-radius: 5%;
-  box-shadow: 0px 0px 20px 5px rgb(0, 193, 49);
+  box-shadow: 0px 0px 20px 5px rgb(201, 9, 185);
   display: flex;
   flex-direction: column;
   align-items: center;
