@@ -16,13 +16,13 @@
               :class="{ selectedTab: currentTab === 'wrapper' }"
               @click="currentTab = 'wrapper'"
             >
-              Wrapper
+              Swapper
             </button>
             <button
               :class="{ selectedTab: currentTab === 'unwrapper' }"
               @click="currentTab = 'unwrapper'"
             >
-              Unwrapper
+              Swap Back
             </button>
           </div>
           <div v-if="walletAddress == null">
@@ -61,7 +61,7 @@
             </div>
   
             <div v-if="currentTab === 'unwrapper'">
-              <h2>Choose which NFT to unwrap (TokenID):</h2>
+              <h2>Choose from which collection to Swap</h2>
   
               <!-- Dropdown for selecting NFT -->
               <div class="dropdownBox">
@@ -92,6 +92,7 @@ import { watch } from "vue";
 import RotateLoader from "vue-spinner/src/RotateLoader.vue";
 import Swal from "sweetalert2";
 import { ref } from "vue";
+import { walletQuery } from "../utils/graphQlQuery";
 require("dotenv").config();
 import {
   cosmos,
@@ -120,7 +121,7 @@ export default {
       nfts: ref([]),
       currentTab: "wrapper",
       loading: false,
-      color: "red", // Color of the spinner
+      color: "green", // Color of the spinner
       size: "15px", // Size of the spinner
       denom: ref(""),
       amountToWrap: ref(""),
@@ -138,6 +139,63 @@ export default {
       }
       return 0;
     },
+  },
+  methods: {
+    async fetchGraphQLData() {
+      if (!this.walletAddress) {
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: "Wallet not connected, please connect wallet",
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
+        return;
+      }
+      this.loading = true;
+
+      try {
+        const response = await request(
+          "https://testnet.empowerchain.io:3000/",
+          walletQuery,
+          {
+            id: this.walletAddress,
+          }
+        );
+        console.log(response);
+        this.creditBalances = response.wallet.creditBalances.nodes;
+        this.denom = this.creditBalances[0].creditCollection.denom;
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: error.message,
+          footer: '<a href="#">Why do I have this issue?</a>',
+        });
+      }
+      this.loading = false;
+    },
+  },
+
+  mounted() {
+    watch(
+      () => this.walletAddress,
+      (newAddress, oldAddress) => {
+        if (newAddress && newAddress !== oldAddress) {
+          this.fetchGraphQLData();
+        }
+      },
+      { immediate: true }
+    );
+    watch(
+      () => this.selectedId,
+      (newId, oldId) => {
+        if (newId && newId !== oldId) {
+          this.denom = this.creditBalances[newId].creditCollection.denom;
+          console.log(this.denom);
+        }
+      },
+      { immediate: true }
+    );
   },
 };
 </script>

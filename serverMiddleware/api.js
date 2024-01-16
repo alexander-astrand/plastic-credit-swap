@@ -26,7 +26,7 @@ app.post("/fetch-and-mint-plastic-credit", async (req, res) => {
     const { empowerchain } = require("@empower-plastic/empowerjs");
     const rpcQueryClient =
       await empowerchain.ClientFactory.createRPCQueryClient({
-        rpcEndpoint: process.env.RPC_ENDPOINT,
+        rpcEndpoint: process.env.NUXT_ENV_RPC_ENDPOINT,
       });
 
     const plasticCreditResponse =
@@ -72,9 +72,9 @@ app.post("/fetch-and-mint-plastic-credit", async (req, res) => {
       };
       //res.send({ mintMsg, metadata, ipfsData });
       console.log("Minting NFT with message:", mintMsg);
-      console.log(process.env.CONTRACT_ADDRESS);
+      console.log(process.env.NUXT_ENV_CONTRACT_ADDRESS);
       try {
-        const mintResult = await mintNFT(process.env.CONTRACT_ADDRESS, mintMsg);
+        const mintResult = await mintNFT(process.env.NUXT_ENV_CONTRACT_ADDRESS, mintMsg);
         const mintResultSerialized = JSON.parse(
           JSON.stringify(mintResult, (key, value) =>
             typeof value === "bigint" ? value.toString() : value
@@ -102,7 +102,7 @@ app.post("/unwrap-nft", async (req, res) => {
     return res.status(400).send("Token ID is required");
   }
   try {
-    const burnResult = await burnNft(process.env.CONTRACT_ADDRESS, token_id);
+    const burnResult = await burnNft(process.env.NUXT_ENV_CONTRACT_ADDRESS, token_id);
     const burnResultSerialized = JSON.parse(
       JSON.stringify(burnResult, (key, value) =>
         typeof value === "bigint" ? value.toString() : value
@@ -124,7 +124,7 @@ app.post("/query-nfts", async (req, res) => {
   }
   try {
     const queryResult = await queryNFTs(
-      process.env.CONTRACT_ADDRESS,
+      process.env.NUXT_ENV_CONTRACT_ADDRESS,
       walletAddress
     );
     const queryResultSerialized = JSON.parse(

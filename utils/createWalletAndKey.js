@@ -9,7 +9,7 @@ export async function createWalletAndKey() {
     const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, "hex"));
     const wallet = await DirectSecp256k1Wallet.fromKey(privateKey, "empower");
     const gasPrice = GasPrice.fromString("0.025umpwr");
-    const tmClient = await Tendermint37Client.connect(process.env.RPC_ENDPOINT);
+    const tmClient = await Tendermint37Client.connect(process.env.NUXT_ENV_RPC_ENDPOINT);
     const client = await SigningCosmWasmClient.createWithSigner(
       tmClient,
       wallet,

@@ -50,14 +50,15 @@
             </div>
             <div class="amountBox" v-if="selectedId !== null">
               <p>Amount avaliable to wrap: {{ maxAmount }}</p>
-              <p>Select amount to wrap:</p>
+              <p class="selectAmount">Select amount to wrap:</p>
               <input
                 type="number"
                 v-model="selectedAmount"
                 min="1"
                 :max="maxAmount"
+                style="font-size: 20px"
               />
-              <button @click="wrapNFT">Wrap NFT</button>
+              <button class="wrapButton" @click="wrapNFT" :disabled="Number(selectedAmount) > Number(maxAmount) || selectedAmount === ''">Wrap NFT</button>
             </div>
             <div class="error" v-if="error">Error: {{ error }}</div>
           </div>
@@ -229,6 +230,7 @@ export default {
             text: "Authorization failed. Please try again.",
             footer: '<a href="#">Why do I have this issue?</a>',
           });
+          this.loading = false;
           return;
         }
       } catch (error) {
@@ -239,9 +241,8 @@ export default {
           text: "Authorization failed. Please try again.",
           footer: '<a href="#">Why do I have this issue?</a>',
         });
-        return;
-      } finally {
         this.loading = false;
+        return;
       }
 
       let denom = this.denom;
@@ -269,6 +270,7 @@ export default {
             text: "You wrapped the Plastic Credits!",
             icon: "success",
           });
+          this.loading = false;
         }, 7000);
       } catch (error) {
         console.error("Error sending data to the server", error);
@@ -278,7 +280,6 @@ export default {
           text: "Failed to send data to server.",
           footer: '<a href="#">Why do I have this issue?</a>',
         });
-      } finally {
         this.loading = false;
       }
     },
@@ -309,7 +310,7 @@ export default {
             text: "You unwrapped your NFT",
             icon: "success",
           });
-        }, 4000);
+        }, 7000);
         // Further handling
       } catch (error) {
         console.error("Error during unwrap operation", error);
@@ -462,5 +463,22 @@ body {
   align-items: center;
   justify-content: center;
   margin-bottom: 10px;
+}
+
+.wrapButton {
+  font-size: 20px;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  background-color: rgb(255, 255, 255);
+  cursor: pointer;
+}
+.wrapButton:hover {
+  background-color: rgb(2, 43, 12);
+  color: white;
+}
+.selectAmount {
+  font-size: 20px;
+  font-weight: bold;
 }
 </style>
