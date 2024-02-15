@@ -80,7 +80,7 @@ app.post("/fetch-and-mint-plastic-credit", async (req, res) => {
             typeof value === "bigint" ? value.toString() : value
           )
         );
-
+        console.log("mintResult: ", mintResultSerialized);
         res.json({ mintTransactionResult: mintResultSerialized });
       } catch (mintError) {
         console.error("Error minting NFT:", mintError);
